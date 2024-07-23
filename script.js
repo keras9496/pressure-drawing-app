@@ -1,81 +1,74 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const userForm = document.getElementById('userForm');
-    const userName = document.getElementById('userName');
-    const startButton = document.getElementById('startButton');
-    const drawingArea = document.getElementById('drawingArea');
     const canvas = document.getElementById('drawingCanvas');
     const ctx = canvas.getContext('2d');
-    const saveButton = document.getElementById('saveButton');
-
+    const pencilBtn = document.getElementById('pencilBtn');
+    const eraserBtn = document.getElementById('eraserBtn');
+    
     let isDrawing = false;
     let lastX = 0;
     let lastY = 0;
-    let pressureSequence = [];
+    let isEraser = false;
 
     function resizeCanvas() {
-        canvas.width = window.innerWidth * 0.8;
-        canvas.height = window.innerHeight * 0.8;
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
     }
-
+    
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
-
-    startButton.addEventListener('click', () => {
-        if (userName.value.trim() !== '') {
-            userForm.style.display = 'none';
-            drawingArea.style.display = 'block';
-        } else {
-            alert('이름을 입력해주세요.');
-        }
-    });
-
-    canvas.addEventListener('touchstart', startDrawing);
-    canvas.addEventListener('touchmove', draw);
-    canvas.addEventListener('touchend', stopDrawing);
-
+    
     function startDrawing(e) {
         isDrawing = true;
-        [lastX, lastY] = [e.touches[0].clientX - canvas.offsetLeft, e.touches[0].clientY - canvas.offsetTop];
+        [lastX, lastY] = getPosition(e);
     }
-
+    
     function draw(e) {
         if (!isDrawing) return;
         e.preventDefault();
         
-        const touch = e.touches[0];
-        const pressure = touch.force || 0.5;
-        const x = touch.clientX - canvas.offsetLeft;
-        const y = touch.clientY - canvas.offsetTop;
+        const [x, y] = getPosition(e);
+        const pressure = e.pressure || e.force || 0.5;
         
         ctx.beginPath();
         ctx.moveTo(lastX, lastY);
         ctx.lineTo(x, y);
-        ctx.strokeStyle = `rgba(0, 0, 0, ${pressure})`;
-        ctx.lineWidth = pressure * 10;
+        
+        if (isEraser) {
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 20;
+        } else {
+            ctx.strokeStyle = `rgba(0, 0, 0, ${pressure})`;
+            ctx.lineWidth = pressure * 20;
+        }
+        
         ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
         ctx.stroke();
         
         [lastX, lastY] = [x, y];
-        
-        pressureSequence.push(pressure);
     }
-
+    
     function stopDrawing() {
         isDrawing = false;
     }
+    
+    function getPosition(e) {
+        if (e.touches && e.touches[0]) {
+            return [e.touches[0].clientX, e.touches[0].clientY];
+        }
+        return [e.clientX, e.clientY];
+    }
 
-    saveButton.addEventListener('click', () => {
-        // 압력 값 시퀀스 저장
-        const pressureData = {
-            name: userName.value,
-            pressures: pressureSequence
-        };
-        localStorage.setItem(userName.value + '_pressure', JSON.stringify(pressureData));
+    canvas.addEventListener('pointerdown', startDrawing);
+    canvas.addEventListener('pointermove', draw);
+    canvas.addEventListener('pointerup', stopDrawing);
+    canvas.addEventListener('pointerout', stopDrawing);
 
-        // 그림 저장
-        const imageData = canvas.toDataURL('image/png');
-        localStorage.setItem(userName.value + '_image', imageData);
+    pencilBtn.addEventListener('click', () => {
+        isEraser = false;
+    });
 
-        alert('그림과 압력 데이터가 저장되었습니다.');
+    eraserBtn.addEventListener('click', () => {
+        isEraser = true;
     });
 });
